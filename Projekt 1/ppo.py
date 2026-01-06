@@ -306,11 +306,44 @@ from nes_py.wrappers import JoypadSpace
 
 from wrappers import *
 
+# =============================================================================
+# TRAININGS-PARAMETER (HIER ANPASSEN!)
+# =============================================================================
+
+# --- Environment ---
+NUM_ENVS = 8                      # Anzahl paralleler Environments (mehr = schneller, aber mehr RAM)
+USE_ASYNC_ENV = True              # True = AsyncVectorEnv (schneller), False = SyncVectorEnv
+
+# --- PPO Hyperparameter ---
+LEARNING_RATE = 2.5e-4            # Learning Rate für Adam Optimizer
+ROLLOUT_STEPS = 128               # Steps pro Environment vor einem Update
+EPOCHS = 4                        # Wie oft dieselben Daten verwendet werden
+MINIBATCH_SIZE = 64               # Batch-Größe für Gradient-Updates
+CLIP_EPS = 0.2                    # PPO Clipping-Parameter (0.1-0.3)
+VF_COEF = 0.5                     # Value-Function Loss Gewichtung
+ENT_COEF = 0.01                   # Entropy Bonus (höher = mehr Exploration)
+GAMMA = 0.99                      # Discount Factor
+LAMBDA = 0.95                     # GAE Lambda Parameter
+
+# --- Checkpoints & Logging ---
+CHECKPOINT_FILE = "mario_1_1_ppo.pt"     # Dateiname für Checkpoints
+SUCCESS_FILE = "mario_1_1_clear.pt"      # Dateiname wenn Level geschafft
+CSV_LOG_FILE = "training_log.csv"        # CSV-Log Dateiname
+SAVE_INTERVAL = 50                       # Checkpoint alle N Updates
+EVAL_INTERVAL = 10                       # Evaluation alle N Updates (Print)
+EVAL_EPISODES = 1                        # Anzahl Evaluations-Episoden
+EVAL_EVERY_UPDATE = True                 # True = evaluiere jedes Update, False = nur alle EVAL_INTERVAL
+
+# --- Device ---
 device = "cpu"
 if torch.cuda.is_available():
     device = "cuda"
 elif torch.backends.mps.is_available():
     device = "mps"
+
+# =============================================================================
+# ENDE PARAMETER
+# =============================================================================
 
 
 def init_csv_logger(filename="training_log.csv"):
@@ -440,7 +473,7 @@ class ActorCritic(nn.Module):
         return action, logprob, value
 
 
-def compute_gae_batch(rewards, values, dones, gamma=0.99, lam=0.95):
+def compute_gae_batch(rewards, values, dones, gamma=GAMMA, lam=LAMBDA):
     T, N = rewards.shape
     advantages = torch.zeros_like(rewards)
     gae = torch.zeros(N, device=device)
@@ -561,80 +594,74 @@ def evaluate_policy(env, model, episodes=5, render=False):
 
 
 def train_ppo():
-    num_env = 8
-    # WICHTIG: AsyncVectorEnv für echte Parallelisierung auf Apple Silicon!
-    # Nutzt mehrere CPU-Cores gleichzeitig → 3-5x schneller
-    # Für Mac mit M1/M2/M3 sehr empfohlen!
-    try:
-        envs = gym.vector.AsyncVectorEnv([lambda: make_env() for _ in range(num_env)])
-        print(f"✅ Nutze AsyncVectorEnv: {num_env} Environments laufen parallel auf mehreren CPU-Cores")
-    except:
-        # Fallback auf SyncVectorEnv falls AsyncVectorEnv Probleme macht
-        envs = gym.vector.SyncVectorEnv([lambda: make_env() for _ in range(num_env)])
-        print(f"⚠️  Nutze SyncVectorEnv: {num_env} Environments laufen sequenziell (langsamer)")
+    # Erstelle Environments (parallel oder sequenziell)
+    if USE_ASYNC_ENV:
+        try:
+            envs = gym.vector.AsyncVectorEnv([lambda: make_env() for _ in range(NUM_ENVS)])
+            print(f"✅ Nutze AsyncVectorEnv: {NUM_ENVS} Environments laufen parallel auf mehreren CPU-Cores")
+        except Exception as e:
+            print(f"⚠️  AsyncVectorEnv fehlgeschlagen: {e}")
+            print(f"⚠️  Fallback auf SyncVectorEnv")
+            envs = gym.vector.SyncVectorEnv([lambda: make_env() for _ in range(NUM_ENVS)])
+    else:
+        envs = gym.vector.SyncVectorEnv([lambda: make_env() for _ in range(NUM_ENVS)])
+        print(f"ℹ️  Nutze SyncVectorEnv: {NUM_ENVS} Environments laufen sequenziell")
     
     obs_dim = envs.single_observation_space.shape[-1]
     act_dim = envs.single_action_space.n
-    print(f"{obs_dim=} {act_dim=}")
+    print(f"{obs_dim=} {act_dim=} {device=}")
     model = ActorCritic(obs_dim, act_dim).to(device)
     
     # Lade vortrainiertes Modell falls vorhanden, sonst starte von Null
-    checkpoint_file = "mario_1_1_ppo.pt"
     start_update = 0
     
     try:
         # PyTorch 2.6+ benötigt weights_only=False für vollständige Checkpoints
-        checkpoint = torch.load(checkpoint_file, weights_only=False)
+        checkpoint = torch.load(CHECKPOINT_FILE, weights_only=False)
         
         # Falls alter Checkpoint-Format (nur model state_dict)
         if isinstance(checkpoint, dict) and 'model_state_dict' not in checkpoint:
             model.load_state_dict(checkpoint)
-            print(f"✅ Altes Modell geladen: {checkpoint_file}")
+            print(f"✅ Altes Modell geladen: {CHECKPOINT_FILE}")
             print(f"ℹ️  Optimizer-State nicht verfügbar (alter Checkpoint)")
         # Neues Checkpoint-Format (vollständig)
         elif isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
             start_update = checkpoint.get('update', 0)
-            print(f"✅ Vollständiger Checkpoint geladen: {checkpoint_file}")
+            print(f"✅ Vollständiger Checkpoint geladen: {CHECKPOINT_FILE}")
             print(f"📊 Fortsetzen ab Update {start_update}")
         else:
             model.load_state_dict(checkpoint)
-            print(f"✅ Modell geladen: {checkpoint_file}")
+            print(f"✅ Modell geladen: {CHECKPOINT_FILE}")
             
     except FileNotFoundError:
         print(f"ℹ️  Kein vortrainiertes Modell gefunden. Starte Training von Null.")
     
-    optimizer = optim.Adam(model.parameters(), lr=2.5e-4)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
     # Lade Optimizer-State falls vorhanden (nur bei neuem Checkpoint-Format)
     try:
-        checkpoint = torch.load(checkpoint_file)
+        checkpoint = torch.load(CHECKPOINT_FILE, weights_only=False)
         if isinstance(checkpoint, dict) and 'optimizer_state_dict' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             print(f"✅ Optimizer-State geladen (Momentum erhalten)")
     except:
         pass
 
-    rollout_steps = 128
-    epochs = 4
-    minibatch_size = 64
-    clip_eps = 0.2
-    vf_coef = 0.5
-    ent_coef = 0.01
     eval_env = make_env()
     eval_env.reset()
     
     # Initialisiere CSV-Logger
-    csv_filename = init_csv_logger("training_log.csv")
+    csv_filename = init_csv_logger(CSV_LOG_FILE)
 
     init_obs = envs.reset()
     update = start_update  # Starte bei gespeichertem Update-Zähler
     while True:
         update += 1
-        batch = rollout_with_bootstrap(envs, model, rollout_steps, init_obs)
+        batch = rollout_with_bootstrap(envs, model, ROLLOUT_STEPS, init_obs)
         init_obs = batch["last_obs"]
 
-        T, N = rollout_steps, envs.num_envs
+        T, N = ROLLOUT_STEPS, envs.num_envs
         total_size = T * N
 
         obs = batch["obs"].reshape(total_size, *envs.single_observation_space.shape)
@@ -643,19 +670,19 @@ def train_ppo():
         adv = batch["advantages"].reshape(total_size)
         ret = batch["returns"].reshape(total_size)
 
-        for _ in range(epochs):
+        for _ in range(EPOCHS):
             idx = torch.randperm(total_size)
-            for start in range(0, total_size, minibatch_size):
-                i = idx[start : start + minibatch_size]
+            for start in range(0, total_size, MINIBATCH_SIZE):
+                i = idx[start : start + MINIBATCH_SIZE]
                 logits, value = model(obs[i])
                 dist = torch.distributions.Categorical(logits=logits)
                 logp = dist.log_prob(act[i])
                 ratio = torch.exp(logp - logp_old[i])
-                clipped = torch.clamp(ratio, 1 - clip_eps, 1 + clip_eps) * adv[i]
+                clipped = torch.clamp(ratio, 1 - CLIP_EPS, 1 + CLIP_EPS) * adv[i]
                 policy_loss = -torch.min(ratio * adv[i], clipped).mean()
                 value_loss = (ret[i] - value).pow(2).mean()
                 entropy = dist.entropy().mean()
-                loss = policy_loss + vf_coef * value_loss - ent_coef * entropy
+                loss = policy_loss + VF_COEF * value_loss - ENT_COEF * entropy
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -666,22 +693,25 @@ def train_ppo():
         max_stage = batch["max_stage"]
         print(f"Update {update}: avg return = {avg_return:.2f} {max_stage=}")
         
-        # Evaluiere bei jedem Update
-        avg_score, info, eval_max_stage = evaluate_policy(
-            eval_env, model, episodes=1, render=False
-        )
+        # Evaluation: Jedes Update oder nur alle EVAL_INTERVAL?
+        should_eval = EVAL_EVERY_UPDATE or (update % EVAL_INTERVAL == 0)
+        eval_data = None
         
-        # Logge alle Daten in CSV (jedes Update)
-        eval_data = {
-            'avg_score': avg_score,
-            'info': info,
-            'eval_max_stage': eval_max_stage
-        }
-        log_to_csv(csv_filename, update, avg_return, max_stage, eval_data)
-        
-        # Zeige Evaluations-Ergebnisse nur bei jedem 10. Update an
-        if update % 10 == 0:
-            print(f"[Eval] Update {update}: avg return = {avg_score:.2f} info: {info}")
+        if should_eval:
+            avg_score, info, eval_max_stage = evaluate_policy(
+                eval_env, model, episodes=EVAL_EPISODES, render=False
+            )
+            
+            # Bereite Eval-Daten für CSV vor
+            eval_data = {
+                'avg_score': avg_score,
+                'info': info,
+                'eval_max_stage': eval_max_stage
+            }
+            
+            # Zeige Eval-Ergebnisse nur bei jedem EVAL_INTERVAL an
+            if update % EVAL_INTERVAL == 0:
+                print(f"[Eval] Update {update}: avg return = {avg_score:.2f} info: {info}")
             
             if eval_max_stage > 1:
                 # Erfolg! Speichere finales Modell
@@ -691,10 +721,14 @@ def train_ppo():
                     'update': update,
                     'avg_score': avg_score,
                     'success': True
-                }, "mario_1_1_clear.pt")
-                print(f"🎉 Level geschafft! Finales Modell gespeichert: mario_1_1_clear.pt")
+                }, SUCCESS_FILE)
+                print(f"🎉 Level geschafft! Finales Modell gespeichert: {SUCCESS_FILE}")
                 break
-        if update > 0 and update % 50 == 0:
+        
+        # Logge in CSV (jedes Update, mit eval_data wenn vorhanden)
+        log_to_csv(csv_filename, update, avg_return, max_stage, eval_data)
+        
+        if update > 0 and update % SAVE_INTERVAL == 0:
             # Checkpoint: Speichere ALLES für späteres Fortsetzen
             torch.save({
                 'model_state_dict': model.state_dict(),
@@ -702,7 +736,7 @@ def train_ppo():
                 'update': update,
                 'avg_return': avg_return,
                 'max_stage': max_stage
-            }, "mario_1_1_ppo.pt")
+            }, CHECKPOINT_FILE)
             print(f"💾 Checkpoint gespeichert bei Update {update}")
 
 
