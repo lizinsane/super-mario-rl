@@ -1,0 +1,5 @@
+__pycache__
+*.gif
+*.pth
+*.p
+mario_1_1_ppo.pt

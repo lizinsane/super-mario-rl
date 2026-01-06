@@ -1,0 +1,6 @@
+Environment generieren: python3 -m venv .venv
+Environment aktivieren: source .venv/bin/activate
+
+Fork synchen:
+git fetch upstream
+git merge upstream/main
