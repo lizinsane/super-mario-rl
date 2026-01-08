@@ -311,18 +311,20 @@ from wrappers import *
 # =============================================================================
 
 # --- Environment ---
-NUM_ENVS = 8                      # Anzahl paralleler Environments (mehr = schneller, aber mehr RAM)
+NUM_ENVS = 16                      # Anzahl paralleler Environments (mehr = schneller, aber mehr RAM) #8
 USE_ASYNC_ENV = True              # True = AsyncVectorEnv (schneller), False = SyncVectorEnv
 
 # --- PPO Hyperparameter ---
 LEARNING_RATE = 2.5e-4            # Learning Rate für Adam Optimizer
-ROLLOUT_STEPS = 128               # Steps pro Environment vor einem Update
+ROLLOUT_STEPS = 256               # Steps pro Environment vor einem Update #128
 EPOCHS = 4                        # Wie oft dieselben Daten verwendet werden
 MINIBATCH_SIZE = 64               # Batch-Größe für Gradient-Updates
 CLIP_EPS = 0.2                    # PPO Clipping-Parameter (0.1-0.3)
-VF_COEF = 0.5                     # Value-Function Loss Gewichtung
-ENT_COEF = 0.01                   # Entropy Bonus (höher = mehr Exploration)
-GAMMA = 0.99                      # Discount Factor
+VF_COEF = 0.5                     # Value-Function Loss Gewichtung (zurück zu 0.5 für Stabilität)
+ENT_COEF = 0.03                   # Entropy Bonus - REDUZIERT für mehr Stabilität (war 0.05)
+ENT_COEF_DECAY = 0.9999           # Entropy Decay pro Update (optional)
+ENT_COEF_MIN = 0.001              # Minimaler Entropy Coefficient
+GAMMA = 0.995                     # Discount Factor #0.99
 LAMBDA = 0.95                     # GAE Lambda Parameter
 
 # --- Checkpoints & Logging ---
@@ -654,6 +656,9 @@ def train_ppo():
     # Initialisiere CSV-Logger
     csv_filename = init_csv_logger(CSV_LOG_FILE)
 
+    # Dynamischer Entropy Coefficient (startet bei ENT_COEF, nimmt langsam ab)
+    current_ent_coef = ENT_COEF
+    
     init_obs = envs.reset()
     update = start_update  # Starte bei gespeichertem Update-Zähler
     while True:
@@ -682,16 +687,19 @@ def train_ppo():
                 policy_loss = -torch.min(ratio * adv[i], clipped).mean()
                 value_loss = (ret[i] - value).pow(2).mean()
                 entropy = dist.entropy().mean()
-                loss = policy_loss + VF_COEF * value_loss - ENT_COEF * entropy
+                loss = policy_loss + VF_COEF * value_loss - current_ent_coef * entropy
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+        
+        # Reduziere Entropy Coefficient langsam (Exploration → Exploitation)
+        current_ent_coef = max(ENT_COEF_MIN, current_ent_coef * ENT_COEF_DECAY)
 
         # logging
         avg_return = batch["returns"].mean().item()
         max_stage = batch["max_stage"]
-        print(f"Update {update}: avg return = {avg_return:.2f} {max_stage=}")
+        print(f"Update {update}: avg return = {avg_return:.2f} {max_stage=} ent_coef={current_ent_coef:.4f}")
         
         # Evaluation: Jedes Update oder nur alle EVAL_INTERVAL?
         should_eval = EVAL_EVERY_UPDATE or (update % EVAL_INTERVAL == 0)

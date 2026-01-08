@@ -30,7 +30,10 @@ def plot_training_progress(csv_file="training_log.csv"):
     print(f"📊 Geladene Daten: {len(df)} Einträge")
     print(f"📅 Von {df['timestamp'].iloc[0]} bis {df['timestamp'].iloc[-1]}")
     
-    # Erstelle Figure mit Subplots - 3 Zeilen x 3 Spalten für mehr Plots
+    # Konvertiere timestamp zu datetime für bessere Plots
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Erstelle Figure mit Subplots - 3 Zeilen x 3 Spalten
     fig, axes = plt.subplots(3, 3, figsize=(18, 15))
     fig.suptitle('PPO Training Progress - Super Mario Bros', fontsize=16, fontweight='bold')
     
@@ -42,14 +45,21 @@ def plot_training_progress(csv_file="training_log.csv"):
     ax1.set_title('Training Return (alle Updates)')
     ax1.grid(True, alpha=0.3)
     
-    # Plot 2: Max Stage
+    # Plot 2: Erreichte Stages (NEUER HAUPTPLOT für Stages)
     ax2 = axes[0, 1]
-    ax2.plot(df['update'], df['max_stage'], 'g-', alpha=0.6, linewidth=1)
-    ax2.axhline(y=2, color='r', linestyle='--', label='Ziel: Stage 2')
+    # Zeige max_stage als Punkte (nicht Linien)
+    ax2.scatter(df['update'], df['max_stage'], c='green', alpha=0.7, s=30, edgecolors='darkgreen')
+    # Füge horizontale Linien für alle 4 Stages hinzu
+    ax2.axhline(y=1, color='blue', linestyle='--', linewidth=1.5, alpha=0.7, label='Stage 1')
+    ax2.axhline(y=2, color='orange', linestyle='--', linewidth=1.5, alpha=0.7, label='Stage 2')
+    ax2.axhline(y=3, color='red', linestyle='--', linewidth=1.5, alpha=0.7, label='Stage 3')
+    ax2.axhline(y=4, color='purple', linestyle='--', linewidth=1.5, alpha=0.7, label='Stage 4')
     ax2.set_xlabel('Update')
-    ax2.set_ylabel('Max Stage')
-    ax2.set_title('Höchster erreichter Stage')
-    ax2.legend()
+    ax2.set_ylabel('Stage / Level')
+    ax2.set_title('Erreichte Stages')
+    ax2.set_ylim(0.5, 4.5)
+    ax2.set_yticks([1, 2, 3, 4])
+    ax2.legend(loc='upper left')
     ax2.grid(True, alpha=0.3)
     
     # Plot 3: Evaluation Return
@@ -104,25 +114,17 @@ def plot_training_progress(csv_file="training_log.csv"):
         ax5.text(0.5, 0.5, 'Noch keine\nScore/Coins Daten', 
                 ha='center', va='center', transform=ax5.transAxes)
     
-    # Plot 6: Leben & Status
+    # Plot 6: Evaluation Score (NEUER PLOT statt Leben)
     ax6 = axes[1, 2]
-    if len(df_eval) > 0:
-        # Leben
-        if df_eval['eval_life'].notna().any():
-            lives = df_eval['eval_life'].astype(float)
-            # Filtere 255 (Game Over) für bessere Visualisierung
-            lives_filtered = lives.replace(255, 0)
-            ax6.plot(df_eval['update'], lives_filtered, 
-                    'red', marker='o', linewidth=2, markersize=4, label='Leben')
-        
+    if len(df_eval) > 0 and df_eval['eval_score'].notna().any():
+        ax6.scatter(df_eval['update'], df_eval['eval_score'].astype(float), 
+                   c='purple', alpha=0.7, s=50, edgecolors='darkviolet')
         ax6.set_xlabel('Update')
-        ax6.set_ylabel('Leben')
-        ax6.set_title('Verbleibende Leben')
-        ax6.set_ylim(-0.5, 3)
-        ax6.legend()
+        ax6.set_ylabel('Evaluation Score')
+        ax6.set_title('Score bei Evaluation')
         ax6.grid(True, alpha=0.3)
     else:
-        ax6.text(0.5, 0.5, 'Noch keine\nLeben Daten', 
+        ax6.text(0.5, 0.5, 'Noch keine\nScore Daten', 
                 ha='center', va='center', transform=ax6.transAxes)
     
     # Plot 7: X Position Übersicht (ALLE Evaluationen)
