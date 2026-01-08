@@ -49,8 +49,9 @@ def arange(s):
     ret = np.transpose(s, (2, 0, 1))
     return np.expand_dims(ret, 0)
 
+
 if __name__ == "__main__":
-    # Standard: mario_1_1_ppo.pt im gleichen Verzeichnis wie eval_ppo.py
+    # Standard: mario_1_1_ppo.pt im gleichen Verzeichnis wie eval.py
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_ckpt = os.path.join(script_dir, "mario_1_1_ppo.pt")
     ckpt_path = sys.argv[1] if len(sys.argv) > 1 else default_ckpt

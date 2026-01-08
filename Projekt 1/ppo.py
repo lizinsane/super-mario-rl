@@ -328,9 +328,11 @@ GAMMA = 0.995                     # Discount Factor #0.99
 LAMBDA = 0.95                     # GAE Lambda Parameter
 
 # --- Checkpoints & Logging ---
-CHECKPOINT_FILE = "mario_1_1_ppo.pt"     # Dateiname für Checkpoints
-SUCCESS_FILE = "mario_1_1_clear.pt"      # Dateiname wenn Level geschafft
-CSV_LOG_FILE = "training_log.csv"        # CSV-Log Dateiname
+# Ermittle Skript-Verzeichnis für korrekte Pfade
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CHECKPOINT_FILE = os.path.join(SCRIPT_DIR, "mario_1_1_ppo.pt")     # Checkpoint im Skript-Verzeichnis
+SUCCESS_FILE = os.path.join(SCRIPT_DIR, "mario_1_1_clear.pt")      # Success-File im Skript-Verzeichnis
+CSV_LOG_FILE = os.path.join(SCRIPT_DIR, "training_log.csv")        # CSV-Log im Skript-Verzeichnis
 SAVE_INTERVAL = 50                       # Checkpoint alle N Updates
 EVAL_INTERVAL = 10                       # Evaluation alle N Updates (Print)
 EVAL_EPISODES = 1                        # Anzahl Evaluations-Episoden

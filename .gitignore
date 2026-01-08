@@ -3,5 +3,6 @@ __pycache__
 *.gif
 *.pth
 *.p
-mario_1_1_ppo*.pt
+*mario_1_1_ppo*.pt*
 Projekt 1/mario_1_1_ppo.pt_save_old
+*mario_ppo*
