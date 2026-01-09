@@ -19,7 +19,8 @@ FRAME_STACK = 4
 RESIZE_SHAPE = (84, 84)
 BEST_MODEL_PATH = "mario_ppo_best.pt"
 LAST_MODEL_PATH = "mario_ppo_model.pt"
-EVAL_MODEL = BEST_MODEL_PATH  # Welches Modell soll evaluiert werden? 
+EVAL_MODEL = BEST_MODEL_PATH  # Welches Modell soll evaluiert werden?
+NUM_EPISODES = 1  # Anzahl Episoden pro Level 
 
 
 # ============================================================================
@@ -129,23 +130,22 @@ if __name__ == "__main__":
     ckpt_path = sys.argv[1] if len(sys.argv) > 1 else default_ckpt
     
     # Optional: World und Stage als Parameter
-    world = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-    stage = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    start_world = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    start_stage = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    num_episodes = int(sys.argv[4]) if len(sys.argv) > 4 else NUM_EPISODES
     
     print("=" * 60)
     print(f"🎮 Mario PPO Evaluation")
     print("=" * 60)
     print(f"Checkpoint: {ckpt_path}")
-    print(f"Level: World {world}-{stage}")
+    print(f"Start Level: World {start_world}-{start_stage}")
+    print(f"Episoden pro Level: {num_episodes}")
     print("=" * 60)
     
     # Device Setup
     device = torch.device("mps" if torch.backends.mps.is_available() else 
                          "cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
-    
-    # Environment erstellen
-    env = make_eval_env(world, stage)
     
     # Erstelle PPO-Modell
     model = ActorCritic(input_channels=FRAME_STACK, num_actions=len(SIMPLE_MOVEMENT))
@@ -168,42 +168,124 @@ if __name__ == "__main__":
     model.eval()
     print("=" * 60)
     
-    # Evaluation Loop
-    total_score = 0.0
-    done = False
-    s = env.reset()
-    s = torch.FloatTensor(s).unsqueeze(0).to(device)
+    # Evaluation Loop - Spielt durch mehrere Levels
+    all_results = []
+    world = start_world
+    stage = start_stage
     
-    print("🎮 Starte Evaluation...\n")
-    step_count = 0
-    
-    while not done:
-        env.render()
-        with torch.no_grad():
-            a = model.act(s)
-        s_prime, r, done, info = env.step(a)
-        s_prime = torch.FloatTensor(s_prime).unsqueeze(0).to(device)
-        total_score += r
-        s = s_prime
-        step_count += 1
-        time.sleep(0.01)
+    while True:
+        # Environment für aktuelles Level erstellen
+        env = make_eval_env(world, stage)
+        
+        print(f"\n🎮 Level {world}-{stage}")
+        print("-" * 60)
+        
+        # Spiele num_episodes mal dieses Level
+        level_success = False
+        
+        for episode in range(num_episodes):
+            if num_episodes > 1:
+                print(f"  Versuch {episode + 1}/{num_episodes}")
+            
+            total_score = 0.0
+            done = False
+            s = env.reset()
+            s = torch.FloatTensor(s).unsqueeze(0).to(device)
+            
+            step_count = 0
+            
+            while not done:
+                env.render()
+                with torch.no_grad():
+                    a = model.act(s)
+                s_prime, r, done, info = env.step(a)
+                s_prime = torch.FloatTensor(s_prime).unsqueeze(0).to(device)
+                total_score += r
+                s = s_prime
+                step_count += 1
+                time.sleep(0.01)
+        
+            # Episode-Ergebnisse
+            x_pos = info.get('x_pos', 0)
+            final_world = info.get('world', world)
+            final_stage = info.get('stage', stage)
+            coins = info.get('coins', 0)
+            score = info.get('score', 0)
+            flag_get = info.get('flag_get', False)
+            
+            result = {
+                'world': world,
+                'stage': stage,
+                'episode': episode + 1,
+                'score': score,
+                'x_pos': x_pos,
+                'coins': coins,
+                'steps': step_count,
+                'flag_get': flag_get
+            }
+            all_results.append(result)
+            
+            if num_episodes > 1:
+                print(f"    Score: {score}, X-Pos: {x_pos}, Flagge: {'✅' if flag_get else '❌'}")
+            else:
+                print(f"  Score: {score}")
+                print(f"  X-Position: {x_pos} pixels")
+                print(f"  Münzen: {coins}")
+                print(f"  Steps: {step_count}")
+                print(f"  Level geschafft: {'✅ JA!' if flag_get else '❌ Nein'}")
+            
+            if flag_get:
+                level_success = True
+                break  # Level geschafft, gehe zum nächsten
+        
+        env.close()
+        
+        # Wenn Level nicht geschafft, hier stoppen
+        if not level_success:
+            print(f"\n❌ Level {world}-{stage} nicht geschafft. Evaluation beendet.")
+            break
+        
+        # Gehe zum nächsten Level
+        stage += 1
+        if stage > 4:
+            stage = 1
+            world += 1
+        
+        # Stoppe bei World 3 (oder wenn kein weiteres Level existiert)
+        if world > 2:
+            print(f"\n✅ Alle Levels durchgespielt!")
+            break
 
-    # Ergebnisse
-    x_pos = info.get('x_pos', 0)
-    final_world = info.get('world', world)
-    final_stage = info.get('stage', stage)
-    coins = info.get('coins', 0)
-    flag_get = info.get('flag_get', False)
-    
+    # Gesamt-Statistiken
     print("\n" + "=" * 60)
-    print("✅ Evaluation beendet!")
+    print("📊 GESAMT-STATISTIKEN")
     print("=" * 60)
-    print(f"   Score: {info.get('score', 0)}")
-    print(f"   Level: {final_world}-{final_stage}")
-    print(f"   X-Position: {x_pos} pixels")
-    print(f"   Münzen: {coins}")
-    print(f"   Steps: {step_count}")
-    print(f"   Level geschafft: {'✅ JA!' if flag_get else '❌ Nein'}")
+    
+    if all_results:
+        total_levels_attempted = len(set((r['world'], r['stage']) for r in all_results))
+        total_episodes = len(all_results)
+        levels_completed = len(set((r['world'], r['stage']) for r in all_results if r['flag_get']))
+        
+        avg_score = sum(r['score'] for r in all_results) / len(all_results)
+        max_score = max(r['score'] for r in all_results)
+        success_rate = sum(1 for r in all_results if r['flag_get']) / len(all_results) * 100
+        
+        print(f"   Levels versucht: {total_levels_attempted}")
+        print(f"   Levels geschafft: {levels_completed}")
+        print(f"   Gesamt Episoden: {total_episodes}")
+        print(f"   Erfolgsquote: {success_rate:.1f}%")
+        print(f"   Durchschnitt Score: {avg_score:.1f}")
+        print(f"   Maximaler Score: {max_score}")
+        
+        # Pro Level Zusammenfassung
+        print(f"\n   Pro Level:")
+        for (w, s) in sorted(set((r['world'], r['stage']) for r in all_results)):
+            level_results = [r for r in all_results if r['world'] == w and r['stage'] == s]
+            completed = any(r['flag_get'] for r in level_results)
+            attempts = len(level_results)
+            avg_x = sum(r['x_pos'] for r in level_results) / len(level_results)
+            print(f"     {w}-{s}: {'✅' if completed else '❌'} ({attempts} Versuch{'e' if attempts > 1 else ''}, Ø X-Pos: {avg_x:.0f})")
+    
     print("=" * 60)
     
     env.close()
