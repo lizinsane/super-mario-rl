@@ -41,17 +41,17 @@ LEVEL_MAX_X = {
 
 def load_data():
     """Lädt und verarbeitet die Episode-Daten"""
-    print(f"📊 Lade Daten aus {EPISODE_LOG}...")
+    print(f"[INFO] Lade Daten aus {EPISODE_LOG}...")
     
     try:
         df = pd.read_csv(EPISODE_LOG)
-        print(f"✅ {len(df)} Episoden geladen")
+        print(f"[SUCCESS] {len(df)} Episoden geladen")
         return df
     except FileNotFoundError:
-        print(f"❌ Datei nicht gefunden: {EPISODE_LOG}")
+        print(f"[ERROR] Datei nicht gefunden: {EPISODE_LOG}")
         return None
     except Exception as e:
-        print(f"❌ Fehler beim Laden: {e}")
+        print(f"[ERROR] Fehler beim Laden: {e}")
         return None
 
 
@@ -124,7 +124,7 @@ def plot_metric(ax, x, y, title, ylabel, color, window_size=WINDOW_SIZE, add_lev
 
 def create_plots(df):
     """Erstellt alle Plots"""
-    print("\n📈 Erstelle Plots...")
+    print("\nErstelle Plots...")
     
     # Figure Setup
     fig, axes = plt.subplots(2, 2, figsize=FIGSIZE, dpi=DPI)
@@ -188,37 +188,37 @@ def create_plots(df):
 def print_statistics(df):
     """Gibt Trainingsstatistiken aus"""
     print("\n" + "=" * 60)
-    print("📊 TRAININGS-STATISTIKEN")
+    print("TRAININGS-STATISTIKEN")
     print("=" * 60)
     
     total_episodes = len(df)
     
     # Score
-    print("\n🎯 Score:")
+    print("\nScore:")
     print(f"   Durchschnitt: {df['score'].mean():.1f}")
     print(f"   Maximum: {df['score'].max():.0f}")
     print(f"   Median: {df['score'].median():.1f}")
     
     # X-Position
-    print("\n📍 X-Position:")
+    print("\nX-Position:")
     print(f"   Durchschnitt: {df['x_pos'].mean():.1f} Pixel")
     print(f"   Maximum: {df['x_pos'].max():.0f} Pixel")
     print(f"   Median: {df['x_pos'].median():.1f} Pixel")
     
     # Max Stage
-    print("\n🎮 Max Stage:")
+    print("\nMax Stage:")
     print(f"   Durchschnitt: {df['max_stage'].mean():.2f}")
     print(f"   Maximum: {df['max_stage'].max():.0f}")
     print(f"   Häufigste Stage: {df['max_stage'].mode()[0] if not df['max_stage'].mode().empty else 'N/A'}")
     
     # Coins
-    print("\n🪙 Münzen:")
+    print("\nMünzen:")
     print(f"   Durchschnitt: {df['coins'].mean():.2f}")
     print(f"   Maximum: {df['coins'].max():.0f}")
     print(f"   Total gesammelt: {df['coins'].sum():.0f}")
     
     # Allgemein
-    print("\n📈 Allgemein:")
+    print("\nAllgemein:")
     print(f"   Gesamt Episoden: {total_episodes}")
     
     # Letzte 100 Episoden vs. Erste 100
@@ -227,7 +227,7 @@ def print_statistics(df):
         last_100_score = df['score'].iloc[-100:].mean()
         improvement = ((last_100_score - first_100_score) / first_100_score * 100) if first_100_score > 0 else 0
         
-        print(f"\n📊 Fortschritt (Erste 100 vs. Letzte 100):")
+        print(f"\nFortschritt (Erste 100 vs. Letzte 100):")
         print(f"   Score: {first_100_score:.1f} → {last_100_score:.1f} ({improvement:+.1f}%)")
         
         first_100_xpos = df['x_pos'].iloc[:100].mean()
@@ -245,7 +245,7 @@ def print_statistics(df):
 def main():
     """Hauptfunktion"""
     print("=" * 60)
-    print("🎮 Super Mario Bros PPO - Episode Visualisierung")
+    print("Super Mario Bros PPO - Episode Visualisierung")
     print("=" * 60)
     
     # Daten laden
@@ -260,17 +260,17 @@ def main():
     fig = create_plots(df)
     
     # Speichern
-    print(f"\n💾 Speichere Plots nach {OUTPUT_FILE}...")
+    print(f"\nSpeichere Plots nach {OUTPUT_FILE}...")
     plt.savefig(OUTPUT_FILE, dpi=DPI, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
-    print(f"✅ Plot gespeichert!")
+    print(f"Plot gespeichert!")
     
     # Anzeigen
-    print("\n📊 Zeige Plots...")
+    print("\nZeige Plots...")
     plt.show()
     
     print("\n" + "=" * 60)
-    print("✅ Fertig!")
+    print("Fertig!")
     print("=" * 60)
 
 

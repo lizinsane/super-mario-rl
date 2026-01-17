@@ -135,7 +135,7 @@ if __name__ == "__main__":
     num_episodes = int(sys.argv[4]) if len(sys.argv) > 4 else NUM_EPISODES
     
     print("=" * 60)
-    print(f"🎮 Mario PPO Evaluation")
+    print(f"Mario PPO Evaluation")
     print("=" * 60)
     print(f"Checkpoint: {ckpt_path}")
     print(f"Start Level: World {start_world}-{start_stage}")
@@ -156,12 +156,12 @@ if __name__ == "__main__":
         checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
         if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"✅ Checkpoint geladen (Update: {checkpoint.get('update', 'unknown')})")
+            print(f"Checkpoint geladen (Update: {checkpoint.get('update', 'unknown')})")
         else:
             model.load_state_dict(checkpoint)
-            print(f"✅ Modell geladen")
+            print(f"Modell geladen")
     except FileNotFoundError:
-        print(f"❌ Checkpoint nicht gefunden: {ckpt_path}")
+        print(f"Checkpoint nicht gefunden: {ckpt_path}")
         print(f"Bitte trainiere zuerst mit ppo2.py oder gib einen gültigen Pfad an.")
         sys.exit(1)
     
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         # Environment für aktuelles Level erstellen
         env = make_eval_env(world, stage)
         
-        print(f"\n🎮 Level {world}-{stage}")
+        print(f"\n[LEVEL] Level {world}-{stage}")
         print("-" * 60)
         
         # Spiele num_episodes mal dieses Level
@@ -226,13 +226,13 @@ if __name__ == "__main__":
             all_results.append(result)
             
             if num_episodes > 1:
-                print(f"    Score: {score}, X-Pos: {x_pos}, Flagge: {'✅' if flag_get else '❌'}")
+                print(f"    Score: {score}, X-Pos: {x_pos}, Flagge: {'[OK]' if flag_get else '[FAIL]'}")
             else:
                 print(f"  Score: {score}")
                 print(f"  X-Position: {x_pos} pixels")
                 print(f"  Münzen: {coins}")
                 print(f"  Steps: {step_count}")
-                print(f"  Level geschafft: {'✅ JA!' if flag_get else '❌ Nein'}")
+                print(f"  Level geschafft: {'[OK] JA!' if flag_get else '[FAIL] Nein'}")
             
             if flag_get:
                 level_success = True
@@ -242,7 +242,7 @@ if __name__ == "__main__":
         
         # Wenn Level nicht geschafft, hier stoppen
         if not level_success:
-            print(f"\n❌ Level {world}-{stage} nicht geschafft. Evaluation beendet.")
+            print(f"\n[FAIL] Level {world}-{stage} nicht geschafft. Evaluation beendet.")
             break
         
         # Gehe zum nächsten Level
@@ -253,12 +253,12 @@ if __name__ == "__main__":
         
         # Stoppe bei World 3 (oder wenn kein weiteres Level existiert)
         if world > 2:
-            print(f"\n✅ Alle Levels durchgespielt!")
+            print(f"\n[SUCCESS] Alle Levels durchgespielt!")
             break
 
     # Gesamt-Statistiken
     print("\n" + "=" * 60)
-    print("📊 GESAMT-STATISTIKEN")
+    print("GESAMT-STATISTIKEN")
     print("=" * 60)
     
     if all_results:
@@ -284,7 +284,7 @@ if __name__ == "__main__":
             completed = any(r['flag_get'] for r in level_results)
             attempts = len(level_results)
             avg_x = sum(r['x_pos'] for r in level_results) / len(level_results)
-            print(f"     {w}-{s}: {'✅' if completed else '❌'} ({attempts} Versuch{'e' if attempts > 1 else ''}, Ø X-Pos: {avg_x:.0f})")
+            print(f"     {w}-{s}: {'[OK]' if completed else '[FAIL]'} ({attempts} Versuch{'e' if attempts > 1 else ''}, Avg X-Pos: {avg_x:.0f})")
     
     print("=" * 60)
     

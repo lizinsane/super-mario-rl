@@ -377,7 +377,7 @@ def ppo_update(model, optimizer, states, actions, old_log_probs, returns, advant
 
 
 def log_update(update_num, avg_return, max_stage):
-    """Schreibt Update-Statistiken in CSV-Datei"""
+    "Schreibt Update-Statistiken in CSV-Datei"
     file_exists = os.path.isfile(UPDATE_LOG_FILE)
     
     with open(UPDATE_LOG_FILE, 'a', newline='') as f:
@@ -431,24 +431,24 @@ def train():
     
     if os.path.exists(CHECKPOINT_FILE):
         try:
-            print(f"\n📂 Checkpoint gefunden: {CHECKPOINT_FILE}")
+            print(f"\n[INFO] Checkpoint gefunden: {CHECKPOINT_FILE}")
             checkpoint = torch.load(CHECKPOINT_FILE, map_location=device, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             total_updates_done = checkpoint.get('update', 0)
             best_max_x_pos = checkpoint.get('best_max_x_pos', 0)
             best_avg_return = checkpoint.get('best_avg_return', float('-inf'))
-            print(f"✅ Checkpoint geladen! Bisherige Updates: {total_updates_done}")
+            print(f"[SUCCESS] Checkpoint geladen! Bisherige Updates: {total_updates_done}")
             print(f"   Bester Max X-Pos: {best_max_x_pos}, Bester Avg Return: {best_avg_return:.2f}")
             print(f"   Jetzt werden weitere {MAX_UPDATES} Updates durchgeführt...")
         except Exception as e:
-            print(f"⚠️  Fehler beim Laden des Checkpoints: {e}")
+            print(f"[WARNING] Fehler beim Laden des Checkpoints: {e}")
             print(f"   Training startet von vorne...")
             total_updates_done = 0
             best_max_x_pos = 0
             best_avg_return = float('-inf')
     else:
-        print(f"\n📝 Kein Checkpoint gefunden. Training startet von vorne...")
+        print(f"\n[INFO] Kein Checkpoint gefunden. Training startet von vorne...")
     
     # Training State
     obs = envs.reset()
@@ -565,7 +565,7 @@ def train():
                 'best_max_x_pos': best_max_x_pos,
                 'best_avg_return': best_avg_return,
             }, BEST_MODEL_FILE)
-            print(f"  🌟 Neues BESTES Modell! X-Pos: {max_cumulative_x} → Gespeichert: {BEST_MODEL_FILE}")
+            print(f"  [BEST] Neues BESTES Modell! X-Pos: {max_cumulative_x} -> Gespeichert: {BEST_MODEL_FILE}")
         
         # Checkpoint speichern (regelmäßig, unabhängig von Performance)
         if update % 50 == 0:
@@ -576,11 +576,11 @@ def train():
                 'best_max_x_pos': best_max_x_pos,
                 'best_avg_return': best_avg_return,
             }, CHECKPOINT_FILE)
-            print(f"  💾 Checkpoint gespeichert: {CHECKPOINT_FILE} (Total Updates: {absolute_update})")
+            print(f"  [SAVE] Checkpoint gespeichert: {CHECKPOINT_FILE} (Total Updates: {absolute_update})")
         
         # Prüfe ob alle Levels durchgespielt wurden (8 Welten x 4 Stages = 32)
         if max_stage_reached >= 32:
-            print("\n🎉 Alle Levels durchgespielt! Training beendet.")
+            print("\n[SUCCESS] Alle Levels durchgespielt! Training beendet.")
             break
     
     # Finales Speichern
