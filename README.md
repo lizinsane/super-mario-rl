@@ -50,7 +50,7 @@ Some important parameters you can adjust in `ppo2.py`:
 
 ## Demo Video
 
-test
+https://github.com/user-attachments/assets/c15d4bb2-edab-4179-bd4f-7de7012f9c1c
 
 *Agent playing Super Mario Bros Level 1-1 after training*
 
