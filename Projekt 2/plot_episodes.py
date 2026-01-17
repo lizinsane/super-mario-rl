@@ -41,17 +41,17 @@ LEVEL_MAX_X = {
 
 def load_data():
     """Lädt und verarbeitet die Episode-Daten"""
-    print(f"[INFO] Lade Daten aus {EPISODE_LOG}...")
+    print(f"Lade Daten aus {EPISODE_LOG}...")
     
     try:
         df = pd.read_csv(EPISODE_LOG)
-        print(f"[SUCCESS] {len(df)} Episoden geladen")
+        print(f"{len(df)} Episoden geladen")
         return df
     except FileNotFoundError:
-        print(f"[ERROR] Datei nicht gefunden: {EPISODE_LOG}")
+        print(f"Datei nicht gefunden: {EPISODE_LOG}")
         return None
     except Exception as e:
-        print(f"[ERROR] Fehler beim Laden: {e}")
+        print(f"Fehler beim Laden: {e}")
         return None
 
 
