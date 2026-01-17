@@ -1,0 +1,16 @@
+name: super-mario-rl
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch::pytorch>=1.6.0
+  - pip
+  - pip:
+      - gym-super-mario-bros==7.4.0
+      - nes-py
+      - numpy
+      - matplotlib
+      - pandas
+      - opencv-python

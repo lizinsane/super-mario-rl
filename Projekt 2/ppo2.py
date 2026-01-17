@@ -22,7 +22,7 @@ from wrappers import SkipFrame, CustomReward, ProcessFrame
 # ============================================================================
 NUM_ENVS = 8                    # Anzahl paralleler Environments
 STEPS_PER_UPDATE = 256          # Schritte pro Update (insgesamt über alle Envs)
-MAX_UPDATES = 1000               # Maximale Anzahl Updates pro Training
+MAX_UPDATES = 1000              # Maximale Anzahl Updates pro Training
 GAMMA = 0.9                     # Discount Factor
 GAE_LAMBDA = 0.95               # GAE Lambda Parameter
 CLIP_EPSILON = 0.2              # PPO Clipping Parameter
@@ -31,7 +31,7 @@ PPO_EPOCHS = 4                  # Anzahl Epochen pro Update
 MINIBATCH_SIZE = 64             # Minibatch Größe
 VALUE_COEF = 0.5                # Value Loss Koeffizient
 ENTROPY_COEF_START = 0.04       # Start Entropy Koeffizient
-ENTROPY_COEF_END = 0.04        # End Entropy Koeffizient # 0.001
+ENTROPY_COEF_END = 0.04         # End Entropy Koeffizient # 0.001
 MAX_GRAD_NORM = 0.5             # Gradient Clipping
 FRAME_STACK = 4                 # Anzahl gestackter Frames
 RESIZE_SHAPE = (84, 84)         # Frame Größe
@@ -40,7 +40,7 @@ RESIZE_SHAPE = (84, 84)         # Frame Größe
 # REWARD PARAMETER
 # ============================================================================
 X_REWARD = 0.7                  # Belohnung pro Pixel X-Fortschritt (erhöht für mehr Motivation)
-COIN_REWARD = 5.0              # Belohnung pro gesammelter Münze #10.0
+COIN_REWARD = 5.0               # Belohnung pro gesammelter Münze #10.0
 DEATH_PENALTY = 30.0            # Bestrafung für Tod (reduziert, damit Risiko lohnt)
 FLAG_REWARD = 1000.0            # Belohnung für Level-Abschluss (erhöht für starken Anreiz)
 IDLE_PENALTY = 0.1              # Strafe pro Frame ohne X-Fortschritt (motiviert Vorwärtsdrang)
@@ -431,24 +431,24 @@ def train():
     
     if os.path.exists(CHECKPOINT_FILE):
         try:
-            print(f"\n[INFO] Checkpoint gefunden: {CHECKPOINT_FILE}")
+            print(f"\nCheckpoint gefunden: {CHECKPOINT_FILE}")
             checkpoint = torch.load(CHECKPOINT_FILE, map_location=device, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             total_updates_done = checkpoint.get('update', 0)
             best_max_x_pos = checkpoint.get('best_max_x_pos', 0)
             best_avg_return = checkpoint.get('best_avg_return', float('-inf'))
-            print(f"[SUCCESS] Checkpoint geladen! Bisherige Updates: {total_updates_done}")
+            print(f"Checkpoint geladen! Bisherige Updates: {total_updates_done}")
             print(f"   Bester Max X-Pos: {best_max_x_pos}, Bester Avg Return: {best_avg_return:.2f}")
             print(f"   Jetzt werden weitere {MAX_UPDATES} Updates durchgeführt...")
         except Exception as e:
-            print(f"[WARNING] Fehler beim Laden des Checkpoints: {e}")
+            print(f"Fehler beim Laden des Checkpoints: {e}")
             print(f"   Training startet von vorne...")
             total_updates_done = 0
             best_max_x_pos = 0
             best_avg_return = float('-inf')
     else:
-        print(f"\n[INFO] Kein Checkpoint gefunden. Training startet von vorne...")
+        print(f"\nKein Checkpoint gefunden. Training startet von vorne...")
     
     # Training State
     obs = envs.reset()
@@ -565,7 +565,7 @@ def train():
                 'best_max_x_pos': best_max_x_pos,
                 'best_avg_return': best_avg_return,
             }, BEST_MODEL_FILE)
-            print(f"  [BEST] Neues BESTES Modell! X-Pos: {max_cumulative_x} -> Gespeichert: {BEST_MODEL_FILE}")
+            print(f"  Neues BESTES Modell! X-Pos: {max_cumulative_x} -> Gespeichert: {BEST_MODEL_FILE}")
         
         # Checkpoint speichern (regelmäßig, unabhängig von Performance)
         if update % 50 == 0:
@@ -576,11 +576,11 @@ def train():
                 'best_max_x_pos': best_max_x_pos,
                 'best_avg_return': best_avg_return,
             }, CHECKPOINT_FILE)
-            print(f"  [SAVE] Checkpoint gespeichert: {CHECKPOINT_FILE} (Total Updates: {absolute_update})")
+            print(f"  Checkpoint gespeichert: {CHECKPOINT_FILE} (Total Updates: {absolute_update})")
         
         # Prüfe ob alle Levels durchgespielt wurden (8 Welten x 4 Stages = 32)
         if max_stage_reached >= 32:
-            print("\n[SUCCESS] Alle Levels durchgespielt! Training beendet.")
+            print("\nAlle Levels durchgespielt! Training beendet.")
             break
     
     # Finales Speichern

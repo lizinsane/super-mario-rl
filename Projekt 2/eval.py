@@ -238,11 +238,10 @@ if __name__ == "__main__":
                 level_success = True
                 break  # Level geschafft, gehe zum nächsten
         
-        env.close()
-        
         # Wenn Level nicht geschafft, hier stoppen
         if not level_success:
             print(f"\n[FAIL] Level {world}-{stage} nicht geschafft. Evaluation beendet.")
+            env.close()
             break
         
         # Gehe zum nächsten Level
@@ -254,6 +253,7 @@ if __name__ == "__main__":
         # Stoppe bei World 3 (oder wenn kein weiteres Level existiert)
         if world > 2:
             print(f"\n[SUCCESS] Alle Levels durchgespielt!")
+            env.close()
             break
 
     # Gesamt-Statistiken
@@ -287,5 +287,3 @@ if __name__ == "__main__":
             print(f"     {w}-{s}: {'[OK]' if completed else '[FAIL]'} ({attempts} Versuch{'e' if attempts > 1 else ''}, Avg X-Pos: {avg_x:.0f})")
     
     print("=" * 60)
-    
-    env.close()
