@@ -50,7 +50,9 @@ Some important parameters you can adjust in `ppo2.py`:
 
 ## Demo Video
 
-<video src="Mario Lvl 1-1.mp4" controls loop autoplay muted></video>
+https://github.com/lizinsane/super-mario-rl/assets/Mario%20Lvl%201-1.mp4
+
+*Agent playing Super Mario Bros Level 1-1 after training*
 
 ---
 
